@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.bind.DatatypeConverter;
@@ -19,7 +20,9 @@ import com.training.jwt.constants.Constants;
 import com.training.jwt.exception.CustomWebException;
 import com.training.jwt.model.StandardResponse;
 import com.training.jwt.model.User;
+import com.training.jwt.model.cassandraudt.DepartmentUdt;
 import com.training.jwt.model.cassandraudt.PrivilegeUdt;
+import com.training.jwt.model.cassandraudt.RoleUdt;
 import com.training.jwt.service.AuthenticationService;
 import com.training.jwt.service.UserService;
 import com.training.jwt.utils.CommonUtils;
@@ -66,15 +69,21 @@ public class AuthenticationServiceImpl implements AuthenticationService, Constan
 		Key signingKey = new SecretKeySpec(apiKeySecretBytes, signatureAlgorithm.getJcaName());
 
 		List<PrivilegeUdt> privileges = new ArrayList<PrivilegeUdt>();
-		if (!CommonUtils.isNull(user.getRoles()))
-			user.getRoles().forEach(e -> privileges.add(e.getPrivilege()));
+
+		Set<RoleUdt> roles = user.getRoles();
+
+		for (RoleUdt role : roles) {
+			privileges.add(role.getPrivilege());
+		}
 
 		// Let's set the JWT Claims
 		JwtBuilder builder = Jwts.builder().setId(String.valueOf(user.getId())).setIssuedAt(now)
 				.setSubject(user.getFirstName() + " " + user.getLastName()).setIssuer("Training Manager")
 				.claim(FIRST_NAME, user.getFirstName()).claim(LAST_NAME, user.getLastName())
 				.claim(EMAIL_ID, user.getEmailId()).claim("departments", user.getDepartments())
-				.signWith(signatureAlgorithm, signingKey);
+				.claim("privileges", privileges).signWith(signatureAlgorithm, signingKey);
+
+		System.out.println("Change detected");
 
 		// if it has been specified, let's add the expiration
 		long expMillis = nowMillis + 600000000;
@@ -98,11 +107,12 @@ public class AuthenticationServiceImpl implements AuthenticationService, Constan
 			userData.put(FIRST_NAME, claims.get(FIRST_NAME));
 			userData.put(LAST_NAME, claims.get(LAST_NAME));
 			ObjectMapper mapper = new ObjectMapper();
-			List<PrivilegeUdt> previlegeList = mapper.convertValue(claims.get(PREVILEGES),
-					new TypeReference<List<PrivilegeUdt>>() {
+			Set<DepartmentUdt> departmentList = mapper.convertValue(claims.get("departments"),
+					new TypeReference<Set<DepartmentUdt>>() {
 					});
-			userData.put(PREVILEGES, previlegeList);
+			userData.put("departments", departmentList);
 			userData.put(EMAIL_ID, claims.get(EMAIL_ID));
+			userData.put("privileges", claims.get("privileges"));
 			StandardResponse<Map<String, Object>> stdResponse = new StandardResponse<Map<String, Object>>();
 			stdResponse.setStatus(Constants.SUCCESS);
 			stdResponse.setElement(userData);
