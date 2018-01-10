@@ -1,10 +1,9 @@
 package com.training.jwt.service.impl;
 
 import java.security.Key;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -68,7 +67,7 @@ public class AuthenticationServiceImpl implements AuthenticationService, Constan
 		byte[] apiKeySecretBytes = DatatypeConverter.parseBase64Binary("test");
 		Key signingKey = new SecretKeySpec(apiKeySecretBytes, signatureAlgorithm.getJcaName());
 
-		List<PrivilegeUdt> privileges = new ArrayList<PrivilegeUdt>();
+		Set<PrivilegeUdt> privileges = new HashSet<PrivilegeUdt>();
 
 		Set<RoleUdt> roles = user.getRoles();
 
@@ -82,8 +81,6 @@ public class AuthenticationServiceImpl implements AuthenticationService, Constan
 				.claim(FIRST_NAME, user.getFirstName()).claim(LAST_NAME, user.getLastName())
 				.claim(EMAIL_ID, user.getEmailId()).claim("departments", user.getDepartments())
 				.claim("privileges", privileges).signWith(signatureAlgorithm, signingKey);
-
-		System.out.println("Change detected");
 
 		// if it has been specified, let's add the expiration
 		long expMillis = nowMillis + 600000000;
